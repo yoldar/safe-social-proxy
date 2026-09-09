@@ -20,8 +20,8 @@ import (
 
 type Client struct {
 	Bin           string
-	ExtractorArgs string // yt-dlp --extractor-args value (empty = don't pass)
-	Cookies       string // path to a Netscape cookies.txt (empty = none)
+	ExtractorArgs []string // each becomes one yt-dlp --extractor-args flag
+	Cookies       string   // path to a Netscape cookies.txt (empty = none)
 	sem           chan struct{}
 	mu            sync.Mutex
 	videos        map[string]*Video
@@ -63,15 +63,23 @@ func New() *Client {
 	if bin == "" {
 		bin = "yt-dlp"
 	}
-	// Datacenter IPs get "Sign in to confirm you're not a bot" from YouTube's
-	// web client (it fetches the webpage + JS challenge). The tv_simply/mweb
-	// clients hit the innertube API directly and usually slip past that from a
-	// VPS; web_safari is tried last for its adaptive HLS when it's reachable.
-	// yt-dlp merges formats from whichever clients succeed. Overridable;
-	// cookies (YTDLP_COOKIES) bypass the wall entirely if these stop working.
-	extractorArgs := os.Getenv("YTDLP_EXTRACTOR_ARGS")
-	if extractorArgs == "" {
-		extractorArgs = "youtube:player_client=tv_simply,mweb,web_safari"
+	// Datacenter IPs get "Sign in to confirm you're not a bot" from YouTube.
+	// A PO-token provider (bgutil, YTDLP_POT_BASE_URL) mints the token the web
+	// client needs, bypassing the wall without account cookies. When it's set
+	// we drive the web_safari client (adaptive HLS) plus that provider; the
+	// innertube clients are kept as extra format sources. Fully overridable
+	// via YTDLP_EXTRACTOR_ARGS (";;"-separated); YTDLP_COOKIES is the last
+	// resort if the token provider ever stops working.
+	var extractorArgs []string
+	if raw := os.Getenv("YTDLP_EXTRACTOR_ARGS"); raw != "" {
+		extractorArgs = strings.Split(raw, ";;")
+	} else if base := os.Getenv("YTDLP_POT_BASE_URL"); base != "" {
+		extractorArgs = []string{
+			"youtube:player_client=web_safari,tv_simply,mweb",
+			"youtubepot-bgutilhttp:base_url=" + base,
+		}
+	} else {
+		extractorArgs = []string{"youtube:player_client=tv_simply,mweb,web_safari"}
 	}
 	return &Client{
 		Bin:           bin,
@@ -93,8 +101,10 @@ func (c *Client) run(ctx context.Context, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, execLimit)
 	defer cancel()
 	base := []string{"--no-warnings", "--no-playlist", "--no-progress", "-J"}
-	if c.ExtractorArgs != "" {
-		base = append(base, "--extractor-args", c.ExtractorArgs)
+	for _, ea := range c.ExtractorArgs {
+		if ea != "" {
+			base = append(base, "--extractor-args", ea)
+		}
 	}
 	if c.Cookies != "" {
 		base = append(base, "--cookies", c.Cookies)

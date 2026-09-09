@@ -7,11 +7,27 @@ services:
     environment:
       - PROXY_DOMAIN=${PROXY_DOMAIN:-social.eazy.kz}
       - PROXY_SCHEME=${PROXY_SCHEME:-https}
+      # PO-token provider bypasses YouTube's datacenter-IP bot wall without
+      # needing account cookies.
+      - YTDLP_POT_BASE_URL=http://bgutil-provider:4416
     expose:
       - "8080"
     networks:
+      - default
       - dokploy-network
+    depends_on:
+      - bgutil-provider
+
+  # Generates YouTube PO tokens for yt-dlp (no login required).
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    restart: unless-stopped
+    expose:
+      - "4416"
+    networks:
+      - default
 
 networks:
+  default:
   dokploy-network:
     external: true
