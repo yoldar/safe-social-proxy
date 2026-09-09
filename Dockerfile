@@ -16,8 +16,8 @@ RUN apt-get update \
     && curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh -s -- -y \
     && apt-get purge -y curl unzip \
     && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -r -M -s /usr/sbin/nologin proxy
+    && rm -rf /var/lib/apt/lists/*
+# debian already ships a system user "proxy" (uid 13); reuse it (see USER below).
 WORKDIR /app
 COPY --from=build /out/proxy /app/proxy
 COPY config.yaml /app/config.yaml
