@@ -25,6 +25,7 @@ type Client struct {
 	Bin           string
 	ExtractorArgs []string // each becomes one yt-dlp --extractor-args flag
 	Cookies       string   // path to a Netscape cookies.txt (empty = none)
+	Proxy         string   // yt-dlp --proxy (e.g. the home-IP tinyproxy)
 	sem           chan struct{}
 	mu            sync.Mutex
 	videos        map[string]*Video
@@ -88,6 +89,7 @@ func New() *Client {
 		Bin:           bin,
 		ExtractorArgs: extractorArgs,
 		Cookies:       resolveCookies(),
+		Proxy:         os.Getenv("YTDLP_PROXY"),
 		sem:           make(chan struct{}, 3),
 		videos:        map[string]*Video{},
 		queries:       map[string]*searchEntry{},
@@ -145,6 +147,9 @@ func (c *Client) run(ctx context.Context, args ...string) ([]byte, error) {
 	}
 	if c.Cookies != "" {
 		base = append(base, "--cookies", c.Cookies)
+	}
+	if c.Proxy != "" {
+		base = append(base, "--proxy", c.Proxy)
 	}
 	cmd := exec.CommandContext(ctx, c.Bin, append(base, args...)...)
 	out, err := cmd.Output()

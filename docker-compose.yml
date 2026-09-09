@@ -14,6 +14,10 @@ services:
       # Reuse the save-video-bot cookies file (single source of truth); the
       # app copies it to a writable temp so yt-dlp can rotate it.
       - YTDLP_COOKIES=/app/cookies.txt
+      # Route yt-dlp extraction through the home IP: YouTube refuses this
+      # datacenter IP even with cookies. Reuses save-video-bot's wg-home
+      # WireGuard→tinyproxy tunnel (shared via its external network below).
+      - YTDLP_PROXY=http://wg-home:8888
     volumes:
       - /etc/dokploy/compose/save-video-bot-i0chzg/files/cookies.txt:/app/cookies.txt:ro
     expose:
@@ -21,6 +25,7 @@ services:
     networks:
       - default
       - dokploy-network
+      - botnet
     depends_on:
       - bgutil-provider
 
@@ -37,3 +42,7 @@ networks:
   default:
   dokploy-network:
     external: true
+  # save-video-bot's compose network, for its wg-home tinyproxy (home IP).
+  botnet:
+    external: true
+    name: save-video-bot-i0chzg_default
