@@ -1,0 +1,17 @@
+# Dokploy deployment: Traefik routes the configured domains to port 8080
+# over dokploy-network; no ports are published on the host.
+services:
+  proxy:
+    build: .
+    restart: unless-stopped
+    environment:
+      - PROXY_DOMAIN=${PROXY_DOMAIN:-social.eazy.kz}
+      - PROXY_SCHEME=${PROXY_SCHEME:-https}
+    expose:
+      - "8080"
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

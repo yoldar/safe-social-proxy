@@ -1,0 +1,76 @@
+# Safe Social Proxy — site definitions.
+# public_domain/public_scheme/listen can be overridden with
+# PROXY_DOMAIN / PROXY_SCHEME / PROXY_LISTEN env vars.
+public_domain: localhost:8080
+public_scheme: http
+listen: :8080
+
+sites:
+  # YouTube runs the built-in frontend (search + watch, no feed, no Shorts):
+  # the real YouTube web app cannot play video through a rewriting proxy —
+  # playback needs an origin-bound BotGuard attestation (PoToken). Streams
+  # are extracted server-side with yt-dlp and proxied via /__proxy/h/.
+  - name: youtube
+    label: YouTube
+    icon: "▶️"
+    note: "поиск и просмотр, без Shorts и без ленты"
+    subdomain: yt
+    upstream: www.youtube.com   # informational; handler talks to yt-dlp
+    handler: youtube
+    enabled: true
+    wildcard_suffixes:
+      - .googlevideo.com   # video streams (unbounded host set)
+      - .ytimg.com         # thumbnails
+    blocked_paths:
+      - ^/shorts(/|$)
+      - ^/feed/shorts
+
+  - name: tiktok
+    label: TikTok
+    icon: "🎵"
+    note: "без ленты For You"
+    subdomain: tt
+    upstream: www.tiktok.com
+    enabled: true
+    host_map:
+      m.tiktok.com: ttm
+    wildcard_suffixes:
+      - .tiktokcdn.com
+      - .tiktokcdn-us.com
+      - .ttwstatic.com
+      - .ibytedtos.com
+      - .ibyteimg.com
+    blocked_paths:
+      - ^/foryou
+      - ^/following
+    root_redirect: /explore
+
+  - name: instagram
+    label: Instagram
+    icon: "📷"
+    note: "ограничено — без входа в аккаунт"
+    subdomain: ig
+    upstream: www.instagram.com
+    enabled: true
+    host_map:
+      static.cdninstagram.com: igstatic
+    wildcard_suffixes:
+      - .cdninstagram.com
+      - .fbcdn.net
+    blocked_paths:
+      - ^/reels?(/|$)
+      - ^/explore(/|$)
+      - ^/direct
+
+  - name: wikipedia
+    label: Wikipedia
+    icon: "📚"
+    note: "проверка движка"
+    subdomain: wiki
+    upstream: en.wikipedia.org
+    enabled: true
+    host_map:
+      en.m.wikipedia.org: wikim
+      upload.wikimedia.org: wikimedia
+    blocked_paths:
+      - ^/wiki/Special:Random   # demo of a blocked path

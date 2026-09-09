@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Safe Social</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1a1d21; --muted: #6b7280;
+    --border: #e5e7eb; --accent: #4f46e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101216; --card: #1a1e24; --text: #e8eaed; --muted: #9aa2ad;
+      --border: #2a2f37; --accent: #818cf8;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px; padding: 24px;
+    background: var(--bg); color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { margin: 0; font-size: 28px; }
+  p.sub { margin: 0 0 24px; color: var(--muted); text-align: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 260px)); gap: 16px; justify-content: center; width: 100%; max-width: 860px; }
+  a.tile {
+    display: flex; flex-direction: column; gap: 6px; padding: 20px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    text-decoration: none; color: var(--text); transition: transform .1s ease, border-color .1s ease;
+  }
+  a.tile:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .icon { font-size: 32px; }
+  .label { font-weight: 600; font-size: 18px; }
+  .note { color: var(--muted); font-size: 13px; min-height: 1em; }
+  footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>Safe Social</h1>
+  <p class="sub">Соцсети без коротких видео — Shorts, Reels и лента For You отключены.</p>
+  <div class="grid">
+    {{range .Sites}}
+    <a class="tile" href="{{.URL}}">
+      <span class="icon">{{.Icon}}</span>
+      <span class="label">{{.Label}}</span>
+      <span class="note">{{.Note}}</span>
+    </a>
+    {{end}}
+  </div>
+  <footer>Личный прокси. Оригинальные сайты заблокированы на устройствах семьи.</footer>
+</body>
+</html>
