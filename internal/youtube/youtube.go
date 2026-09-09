@@ -19,11 +19,13 @@ import (
 )
 
 type Client struct {
-	Bin     string
-	sem     chan struct{}
-	mu      sync.Mutex
-	videos  map[string]*Video
-	queries map[string]*searchEntry
+	Bin           string
+	ExtractorArgs string // yt-dlp --extractor-args value (empty = don't pass)
+	Cookies       string // path to a Netscape cookies.txt (empty = none)
+	sem           chan struct{}
+	mu            sync.Mutex
+	videos        map[string]*Video
+	queries       map[string]*searchEntry
 }
 
 type Video struct {
@@ -61,11 +63,23 @@ func New() *Client {
 	if bin == "" {
 		bin = "yt-dlp"
 	}
+	// Datacenter IPs get "Sign in to confirm you're not a bot" from YouTube's
+	// web client (it fetches the webpage + JS challenge). The tv_simply/mweb
+	// clients hit the innertube API directly and usually slip past that from a
+	// VPS; web_safari is tried last for its adaptive HLS when it's reachable.
+	// yt-dlp merges formats from whichever clients succeed. Overridable;
+	// cookies (YTDLP_COOKIES) bypass the wall entirely if these stop working.
+	extractorArgs := os.Getenv("YTDLP_EXTRACTOR_ARGS")
+	if extractorArgs == "" {
+		extractorArgs = "youtube:player_client=tv_simply,mweb,web_safari"
+	}
 	return &Client{
-		Bin:     bin,
-		sem:     make(chan struct{}, 3),
-		videos:  map[string]*Video{},
-		queries: map[string]*searchEntry{},
+		Bin:           bin,
+		ExtractorArgs: extractorArgs,
+		Cookies:       os.Getenv("YTDLP_COOKIES"),
+		sem:           make(chan struct{}, 3),
+		videos:        map[string]*Video{},
+		queries:       map[string]*searchEntry{},
 	}
 }
 
@@ -79,6 +93,12 @@ func (c *Client) run(ctx context.Context, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, execLimit)
 	defer cancel()
 	base := []string{"--no-warnings", "--no-playlist", "--no-progress", "-J"}
+	if c.ExtractorArgs != "" {
+		base = append(base, "--extractor-args", c.ExtractorArgs)
+	}
+	if c.Cookies != "" {
+		base = append(base, "--cookies", c.Cookies)
+	}
 	cmd := exec.CommandContext(ctx, c.Bin, append(base, args...)...)
 	out, err := cmd.Output()
 	if err != nil {
