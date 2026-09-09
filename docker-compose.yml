@@ -10,6 +10,12 @@ services:
       # PO-token provider bypasses YouTube's datacenter-IP bot wall without
       # needing account cookies.
       - YTDLP_POT_BASE_URL=http://bgutil-provider:4416
+      # Authenticated cookies are the reliable bypass on a flagged VPS IP.
+      # Reuse the save-video-bot cookies file (single source of truth); the
+      # app copies it to a writable temp so yt-dlp can rotate it.
+      - YTDLP_COOKIES=/app/cookies.txt
+    volumes:
+      - /etc/dokploy/compose/save-video-bot-i0chzg/files/cookies.txt:/app/cookies.txt:ro
     expose:
       - "8080"
     networks:

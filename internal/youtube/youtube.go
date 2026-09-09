@@ -94,23 +94,30 @@ func New() *Client {
 	}
 }
 
-// resolveCookies returns a path to a Netscape cookies.txt for yt-dlp, or "".
-// YTDLP_COOKIES is a ready path (e.g. a Dokploy file mount). YTDLP_COOKIES_B64
-// is the cookies.txt itself, base64-encoded into a single-line env var (paste
-// `base64 -w0 cookies.txt` into Dokploy → Environment); it's decoded to a
-// 0600 file on startup so the secret never has to live in the repo or a
-// multi-line env value.
+// resolveCookies returns a path to a writable Netscape cookies.txt for yt-dlp,
+// or "". Both sources land in a private 0600 temp copy: yt-dlp rewrites the
+// cookie jar on success, so it must not point at a read-only bind mount or the
+// repo. YTDLP_COOKIES is a source path (e.g. the save-video-bot cookies file
+// bind-mounted read-only); YTDLP_COOKIES_B64 is the cookies.txt base64-encoded
+// into a single-line env var. The bind-mount route keeps a single source of
+// truth — refreshing the bot's cookies covers this service after a restart.
 func resolveCookies() string {
+	var data []byte
 	if p := os.Getenv("YTDLP_COOKIES"); p != "" {
-		return p
-	}
-	b64 := strings.TrimSpace(os.Getenv("YTDLP_COOKIES_B64"))
-	if b64 == "" {
-		return ""
-	}
-	data, err := base64.StdEncoding.DecodeString(b64)
-	if err != nil {
-		log.Printf("youtube: YTDLP_COOKIES_B64 is not valid base64: %v", err)
+		b, err := os.ReadFile(p)
+		if err != nil {
+			log.Printf("youtube: cannot read YTDLP_COOKIES %q: %v", p, err)
+			return ""
+		}
+		data = b
+	} else if b64 := strings.TrimSpace(os.Getenv("YTDLP_COOKIES_B64")); b64 != "" {
+		b, err := base64.StdEncoding.DecodeString(b64)
+		if err != nil {
+			log.Printf("youtube: YTDLP_COOKIES_B64 is not valid base64: %v", err)
+			return ""
+		}
+		data = b
+	} else {
 		return ""
 	}
 	path := filepath.Join(os.TempDir(), "ssp-cookies.txt")
