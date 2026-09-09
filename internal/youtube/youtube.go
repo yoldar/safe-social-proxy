@@ -59,7 +59,7 @@ type searchEntry struct {
 const (
 	videoTTL  = 30 * time.Minute // googlevideo URLs live ~6h; refresh well before
 	searchTTL = 10 * time.Minute
-	execLimit = 45 * time.Second
+	execLimit = 120 * time.Second // extraction via the home proxy is slower
 )
 
 func New() *Client {
@@ -77,6 +77,11 @@ func New() *Client {
 	var extractorArgs []string
 	if raw := os.Getenv("YTDLP_EXTRACTOR_ARGS"); raw != "" {
 		extractorArgs = strings.Split(raw, ";;")
+	} else if os.Getenv("YTDLP_PROXY") != "" {
+		// Extraction runs from the home IP — a clean residential address that
+		// needs no PO token or innertube tricks. The default web client
+		// returns adaptive HLS and works with cookies.
+		extractorArgs = []string{"youtube:player_client=default"}
 	} else if base := os.Getenv("YTDLP_POT_BASE_URL"); base != "" {
 		extractorArgs = []string{
 			"youtube:player_client=web_safari,tv_simply,mweb",
