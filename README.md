@@ -19,6 +19,14 @@ YouTube своя минимальная страница поиска/просм
 занимается community-поддерживаемый yt-dlp (арсенал обходов обновляется
 вместе с пакетом).
 
+**Бот-стена на datacenter-IP.** С IP сервера YouTube отвечает "Sign in to
+confirm you're not a bot" при извлечении потока (поиск проходит, а разбор
+плеера — нет). Обход без аккаунта — sidecar `bgutil-provider`
+(`brainicism/bgutil-ytdlp-pot-provider`), который выдаёт PO-токены; yt-dlp
+берёт их через плагин (`YTDLP_POT_BASE_URL=http://bgutil-provider:4416`) и
+играет web_safari-поток (HLS). Если провайдер перестанет помогать — крайний
+вариант `YTDLP_COOKIES` (Netscape cookies.txt из браузера с логином).
+
 ## Архитектура
 
 Один Go-бинарник (`cmd/proxy`), роутинг по поддоменам `*.social.eazy.kz`.
@@ -54,8 +62,9 @@ go run ./cmd/proxy -config config.yaml
 - Домены в Dokploy (Let's Encrypt HTTP-01, все → сервис `proxy:8080`):
   `social.eazy.kz`, `yt.`, `tt.`, `ttm.`, `ig.`, `igstatic.`, `wiki.`,
   `wikim.`, `wikimedia.social.eazy.kz`.
-- DNS (ps.kz): `social.eazy.kz A 62.171.186.187` (есть) и
-  **`*.social.eazy.kz A 62.171.186.187`** (wildcard на поддомены).
+- DNS (ps.kz): нужны ОБЕ записи — `*.social.eazy.kz A 62.171.186.187`
+  (wildcard на поддомены) **и отдельно** `social.eazy.kz A 62.171.186.187`
+  (wildcard не покрывает голый apex, где живёт портал).
 
 Смоук после деплоя: `make smoke DOMAIN=social.eazy.kz SCHEME=https`.
 
