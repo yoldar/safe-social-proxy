@@ -7,11 +7,14 @@ package youtube
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -84,11 +87,38 @@ func New() *Client {
 	return &Client{
 		Bin:           bin,
 		ExtractorArgs: extractorArgs,
-		Cookies:       os.Getenv("YTDLP_COOKIES"),
+		Cookies:       resolveCookies(),
 		sem:           make(chan struct{}, 3),
 		videos:        map[string]*Video{},
 		queries:       map[string]*searchEntry{},
 	}
+}
+
+// resolveCookies returns a path to a Netscape cookies.txt for yt-dlp, or "".
+// YTDLP_COOKIES is a ready path (e.g. a Dokploy file mount). YTDLP_COOKIES_B64
+// is the cookies.txt itself, base64-encoded into a single-line env var (paste
+// `base64 -w0 cookies.txt` into Dokploy → Environment); it's decoded to a
+// 0600 file on startup so the secret never has to live in the repo or a
+// multi-line env value.
+func resolveCookies() string {
+	if p := os.Getenv("YTDLP_COOKIES"); p != "" {
+		return p
+	}
+	b64 := strings.TrimSpace(os.Getenv("YTDLP_COOKIES_B64"))
+	if b64 == "" {
+		return ""
+	}
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		log.Printf("youtube: YTDLP_COOKIES_B64 is not valid base64: %v", err)
+		return ""
+	}
+	path := filepath.Join(os.TempDir(), "ssp-cookies.txt")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		log.Printf("youtube: cannot write cookies file: %v", err)
+		return ""
+	}
+	return path
 }
 
 func (c *Client) run(ctx context.Context, args ...string) ([]byte, error) {
